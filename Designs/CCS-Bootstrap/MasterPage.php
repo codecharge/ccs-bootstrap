@@ -1,102 +1,127 @@
 <?php
-//Include Common Files @1-F7BE3776
-define("RelativePath", "../..");
-define("PathToCurrentPage", "/Designs/CCS-Bootstrap/");
-define("FileName", "MasterPage.php");
-include_once(RelativePath . "/Common.php");
-include_once(RelativePath . "/Template.php");
-include_once(RelativePath . "/Sorter.php");
-include_once(RelativePath . "/Navigator.php");
-//End Include Common Files
 
-//Initialize Page @1-6DC11B93
-// Variables
-$FileName = "";
-$Redirect = "";
-$Tpl = "";
-$TemplateFileName = "";
-$BlockToParse = "";
-$ComponentName = "";
-$Attributes = "";
+class clsMasterPage { //MasterPage class @1-BFE8F48A
 
-// Events;
-$CCSEvents = "";
-$CCSEventResult = "";
-$TemplateSource = "";
+//Variables @1-6DB8BB64
+    public $ComponentType = "IncludablePage";
+    public $Connections = array();
+    public $FileName = "";
+    public $Redirect = "";
+    public $Tpl = "";
+    public $TemplateFileName = "";
+    public $BlockToParse = "";
+    public $ComponentName = "";
+    public $Attributes = "";
+    public $PathToCurrentMasterPage = "";
+    public $TemplatePathValue = "";
+    public $HTML;
 
-$FileName = FileName;
-$Redirect = "";
-$TemplateFileName = "MasterPage.html";
-$BlockToParse = "main";
-$TemplateEncoding = "UTF-8";
-$ContentType = "text/html";
-$PathToRoot = "../../";
-$PathToRootOpt = "../../";
-$Scripts = "|";
-//End Initialize Page
+    // Events;
+    public $CCSEvents = "";
+    public $CCSEventResult = "";
+    public $RelativePath;
+    public $Visible;
+    public $Parent;
+    public $TemplateSource;
+//End Variables
 
-//Before Initialize @1-E870CEBC
-$CCSEventResult = CCGetEvent($CCSEvents, "BeforeInitialize", $MainPage);
-//End Before Initialize
+//Class_Initialize Event @1-410B11F7
+    function clsMasterPage($RelativePath, $ComponentName, & $Parent)
+    {
+        global $CCSLocales;
+        global $DefaultDateFormat;
+        $this->ComponentName = $ComponentName;
+        $this->RelativePath = $RelativePath;
+        $this->Visible = true;
+        $this->Parent = & $Parent;
+        $this->FileName = "MasterPage.php";
+        $this->Redirect = "";
+        $this->TemplateFileName = "MasterPage.html";
+        $this->BlockToParse = "main";
+        $this->TemplateEncoding = "UTF-8";
+        $this->ContentType = "text/html";
+    }
+//End Class_Initialize Event
 
-//Initialize Objects @1-EC146B92
-$Attributes = new clsAttributes("page:");
-$Attributes->SetValue("pathToRoot", $PathToRoot);
-$MainPage->Attributes = & $Attributes;
-$ScriptIncludes = "";
-$SList = explode("|", $Scripts);
-foreach ($SList as $Script) {
-    if ($Script != "") $ScriptIncludes = $ScriptIncludes . "<script src=\"" . $PathToRoot . $Script . "\" type=\"text/javascript\"></script>\n";
-}
-$Attributes->SetValue("scriptIncludes", $ScriptIncludes);
+//Class_Terminate Event @1-32FD4740
+    function Class_Terminate()
+    {
+        $this->CCSEventResult = CCGetEvent($this->CCSEvents, "BeforeUnload", $this);
+    }
+//End Class_Terminate Event
 
-$CCSEventResult = CCGetEvent($CCSEvents, "AfterInitialize", $MainPage);
+//BindEvents Method @1-0DAD0D56
+    function BindEvents()
+    {
+        $this->CCSEventResult = CCGetEvent($this->CCSEvents, "AfterInitialize", $this);
+    }
+//End BindEvents Method
 
-if ($Charset) {
-    header("Content-Type: " . $ContentType . "; charset=" . $Charset);
-} else {
-    header("Content-Type: " . $ContentType);
-}
-//End Initialize Objects
+//Operations Method @1-7E2A14CF
+    function Operations()
+    {
+        global $Redirect;
+        if(!$this->Visible)
+            return "";
+    }
+//End Operations Method
 
-//Initialize HTML Template @1-97C0D71D
-$CCSEventResult = CCGetEvent($CCSEvents, "OnInitializeView", $MainPage);
-$Tpl = new clsTemplate($FileEncoding, $TemplateEncoding);
-if (strlen($TemplateSource)) {
-    $Tpl->LoadTemplateFromStr($TemplateSource, $BlockToParse, "UTF-8");
-} else {
-    $Tpl->LoadTemplate(PathToCurrentPage . $TemplateFileName, $BlockToParse, "UTF-8");
-}
-$Tpl->SetVar("CCS_PathToRoot", $PathToRoot);
-$Tpl->block_path = "/$BlockToParse";
-$CCSEventResult = CCGetEvent($CCSEvents, "BeforeShow", $MainPage);
-$Attributes->SetValue("pathToRoot", "../../");
-$Attributes->Show();
-//End Initialize HTML Template
+//Initialize Method @1-5CAC3BAC
+    function Initialize($Path = "")
+    {
+        global $FileName;
+        global $CCSLocales;
+        global $DefaultDateFormat;
+        global $PathToCurrentMasterPage;
+        $this->TemplatePathValue = $Path;
+        $PathToCurrentMasterPage = $this->RelativePath;
+        global $Scripts;
+        $IncScripts = "|";
+        $SList = explode("|", $IncScripts);
+        foreach ($SList as $Script) {
+            if ($Script != "" && strpos($Scripts, "|" . $Script . "|") === false)  $Scripts = $Scripts . $Script . "|";
+        }
+        $this->CCSEventResult = CCGetEvent($this->CCSEvents, "BeforeInitialize", $this);
+        if(!$this->Visible)
+            return "";
+        $this->Attributes = & $this->Parent->Attributes;
 
-//Go to destination page @1-FBA93089
-if($Redirect)
-{
-    $CCSEventResult = CCGetEvent($CCSEvents, "BeforeUnload", $MainPage);
-    header("Location: " . $Redirect);
-    unset($Tpl);
-    exit;
-}
-//End Go to destination page
+        // Create Components
+        $this->Content = new clsPanel("Content", $this);
+        $this->Content->isContentPlaceholder = true;
+        $this->Head = new clsPanel("Head", $this);
+        $this->Head->isContentPlaceholder = true;
+        $this->BindEvents();
+        $this->CCSEventResult = CCGetEvent($this->CCSEvents, "OnInitializeView", $this);
+        $this->Tpl = new clsTemplate();
+        if ($this->TemplateSource) {
+            $this->Tpl->LoadTemplateFromStr($this->TemplateSource, "main", $this->TemplateEncoding);
+        } else {
+            $this->Tpl->LoadTemplate($this->RelativePath . $this->TemplateFileName, "main", $this->TemplateEncoding);
+        }
+    }
+//End Initialize Method
 
-//Show Page @1-D35A3B77
-$Tpl->block_path = "";
-$Tpl->Parse($BlockToParse, false);
-if (!isset($main_block)) $main_block = $Tpl->GetVar($BlockToParse);
-$main_block = CCConvertEncoding($main_block, $FileEncoding, $TemplateEncoding);
-$CCSEventResult = CCGetEvent($CCSEvents, "BeforeOutput", $MainPage);
-if ($CCSEventResult) echo $main_block;
-//End Show Page
+//Show Method @1-D77CB2D6
+    function Show()
+    {
+        global $CCSLocales;
+        $this->Tpl->block_path = "/main";
+        $this->CCSEventResult = CCGetEvent($this->CCSEvents, "BeforeShow", $this);
+        if(!$this->Visible) {
+            $this->Tpl->block_path = $block_path;
+            $this->Tpl->SetVar($this->ComponentName, "");
+            return "";
+        }
+        $this->Tpl->SetVar("CCS_PathToCurrentPage", RelativePath . $this->RelativePath);
+        $this->Tpl->SetVar("page:pathToCurrentPage", RelativePath . $this->RelativePath);
+        $this->Attributes->Show();
+        $this->Tpl->block_path = "";
+        $this->Tpl->Parse("main", false);
+        $this->HTML = $this->Tpl->GetVar("main");
+        $this->CCSEventResult = CCGetEvent($this->CCSEvents, "BeforeOutput", $this);
+    }
+//End Show Method
 
-//Unload Page @1-74A7C1E7
-$CCSEventResult = CCGetEvent($CCSEvents, "BeforeUnload", $MainPage);
-unset($Tpl);
-//End Unload Page
-
-
+} //End MasterPage Class @1-FCB6E20C
 ?>
